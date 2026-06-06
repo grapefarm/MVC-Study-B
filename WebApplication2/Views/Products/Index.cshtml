@@ -6,10 +6,22 @@
 
 <h1>Index</h1>
 <form method="get" action="@Url.Action("Index", "Products")" class="mb-3">
-    <div class="input-group" style="max-width: 800px;">
-        <input type="text" name="keyword" class="form-control" placeholder="請輸入商品名稱關鍵字..." />
-        <button type="submit" class="btn btn-primary">搜尋</button>
-        <a href="@Url.Action("Index", "Products")" class="btn btn-secondary">清除</a>
+    <div class="row g-2 align-items-center">
+        <!-- 關鍵字 -->
+        <div class="col-auto">
+            <input type="text" name="keyword" value="@ViewData["CurrentKeyword"]" class="form-control" placeholder="商品名稱..." />
+        </div>
+        <!-- 分類下拉選單（會自動選中上次篩選的項目） -->
+        <div class="col-auto">
+            <select name="categoryId" class="form-select" asp-items="ViewBag.CategoryId">
+                <option value="">-- 全部商品分類 --</option>
+            </select>
+        </div>
+        <!-- 按鈕組 -->
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">複合搜尋</button>
+            <a href="@Url.Action("Index", "Products")" class="btn btn-secondary">清除</a>
+        </div>
     </div>
 </form>
 
@@ -26,7 +38,9 @@
                 @Html.DisplayNameFor(model => model.QuantityPerUnit)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.UnitPrice)
+                <a href="@Url.Action("Index", new { sortBy = ViewData["PriceSortParam"], keyword = ViewData["CurrentKeyword"], categoryId = Context.Request.Query["categoryId"] })" style="text-decoration: none;">
+                    單價 ↕
+                </a>
             </th>
             <th>
                 @Html.DisplayNameFor(model => model.UnitsInStock)

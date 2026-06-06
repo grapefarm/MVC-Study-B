@@ -18,23 +18,50 @@ namespace WebApplication2.Controllers
             _context = context;
         }
 
-        // GET: Products
-        public async Task<IActionResult> Index(string keyword = null)
-        {
-            var products = _context.Products.Include(p => p.Category)
-                .Include(p => p.Supplier)
-                .AsQueryable();
+		// GET: Products
+		public async Task<IActionResult> Index(string keyword = null, int? categoryId = null, string sortBy = null)
+		{
+			// 1. 下拉選單門票（無條件載入，並記住上次選的 categoryId）
+			ViewBag.CategoryId = new SelectList(_context.Categories, "CategoryId", "CategoryName", categoryId);
 
-            if (!string.IsNullOrEmpty(keyword))
-            {
-                products = products.Where(p => p.ProductName.Contains(keyword));
+			// 2. 狀態保留：把關鍵字和當前的排序狀態丟給前端 View
+			ViewData["CurrentKeyword"] = keyword;
+
+			// 💡 排序開關切換邏輯：如果現在是正序(PriceAsc)，下次點擊超連結就要變倒序(PriceDesc)，反之亦然
+			ViewData["PriceSortParam"] = sortBy == "PriceAsc" ? "PriceDesc" : "PriceAsc";
+
+			// 3. 宣告查詢基底
+			var products = _context.Products
+				.Include(p => p.Category)
+				.Include(p => p.Supplier)
+				.AsQueryable();
+
+			// 4. 條件一：關鍵字篩選
+			if (!string.IsNullOrEmpty(keyword))
+			{
+				products = products.Where(p => p.ProductName.Contains(keyword));
 			}
 
-            return View(await products.ToListAsync());
-        }
+			// 5. 條件二：下拉選單篩選
+			if (categoryId.HasValue)
+			{
+				products = products.Where(p => p.CategoryId == categoryId);
+			}
 
-        // GET: Products/Details/5
-        public async Task<IActionResult> Details(int? id)
+			// 6. 條件三：排序邏輯（使用 C# Switch 運算式）
+			products = sortBy switch
+			{
+				"PriceAsc" => products.OrderBy(p => p.UnitPrice),
+				"PriceDesc" => products.OrderByDescending(p => p.UnitPrice),
+				_ => products.OrderBy(p => p.ProductId) // ⚠️ 這裡的 Id 記得對齊你 Model 的大小寫喔（例如 ProductId 或 ProductID）
+			};
+
+			// 7. 最後一氣呵成轉成 List 吐給前端
+			return View(await products.ToListAsync());
+		}
+
+		// GET: Products/Details/5
+		public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
             {
