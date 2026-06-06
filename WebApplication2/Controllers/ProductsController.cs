@@ -1,25 +1,28 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using WebApplication2.Models;
+using WebApplication2.Services;
 
 namespace WebApplication2.Controllers
 {
     public class ProductsController : Controller
     {
         private readonly NorthwindContext _context;
+		private readonly IProductService _productService; // 💡 宣告介面
 
-        public ProductsController(NorthwindContext context)
+		public ProductsController(NorthwindContext context, IProductService productService)
         {
             _context = context;
-        }
+			_productService = productService;
+		}
 
-		// GET: Products
-		public async Task<IActionResult> Index(string keyword = null, int? categoryId = null, string sortBy = null)
+        // GET: Products
+        public async Task<IActionResult> Index(string keyword = null, int? categoryId = null, string sortBy = null)
 		{
 			// 1. 下拉選單門票（無條件載入，並記住上次選的 categoryId）
 			ViewBag.CategoryId = new SelectList(_context.Categories, "CategoryId", "CategoryName", categoryId);
@@ -30,34 +33,10 @@ namespace WebApplication2.Controllers
 			// 💡 排序開關切換邏輯：如果現在是正序(PriceAsc)，下次點擊超連結就要變倒序(PriceDesc)，反之亦然
 			ViewData["PriceSortParam"] = sortBy == "PriceAsc" ? "PriceDesc" : "PriceAsc";
 
-			// 3. 宣告查詢基底
-			var products = _context.Products
-				.Include(p => p.Category)
-				.Include(p => p.Supplier)
-				.AsQueryable();
+			// 🔥 炫技核心：一刀切開！直接呼叫 Service 拿資料，Controller 完全不知道裡面是怎麼算的
+			var products = await _productService.GetFilteredProductsAsync(keyword, categoryId, sortBy);
 
-			// 4. 條件一：關鍵字篩選
-			if (!string.IsNullOrEmpty(keyword))
-			{
-				products = products.Where(p => p.ProductName.Contains(keyword));
-			}
-
-			// 5. 條件二：下拉選單篩選
-			if (categoryId.HasValue)
-			{
-				products = products.Where(p => p.CategoryId == categoryId);
-			}
-
-			// 6. 條件三：排序邏輯（使用 C# Switch 運算式）
-			products = sortBy switch
-			{
-				"PriceAsc" => products.OrderBy(p => p.UnitPrice),
-				"PriceDesc" => products.OrderByDescending(p => p.UnitPrice),
-				_ => products.OrderBy(p => p.ProductId) // ⚠️ 這裡的 Id 記得對齊你 Model 的大小寫喔（例如 ProductId 或 ProductID）
-			};
-
-			// 7. 最後一氣呵成轉成 List 吐給前端
-			return View(await products.ToListAsync());
+			return View(products);
 		}
 
 		// GET: Products/Details/5

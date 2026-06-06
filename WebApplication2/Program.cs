@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebApplication2.Models;
+using WebApplication2.Services;
 
 namespace WebApplication2
 {
@@ -11,10 +12,14 @@ namespace WebApplication2
 
 			// Add services to the container.
 			builder.Services.AddControllersWithViews();
+
 			// 讀取連線字串並註冊 DbContext
 			var connectionString = builder.Configuration.GetConnectionString("NorthwindConnection");
 			builder.Services.AddDbContext<NorthwindContext>(options =>
 				options.UseSqlServer(connectionString));
+
+			// 告訴 .NET 宇宙：未來只要有人跟你要 IProductService，你就實作一個 ProductService 給他
+			builder.Services.AddScoped<IProductService, ProductService>();
 
 			var app = builder.Build();
 
