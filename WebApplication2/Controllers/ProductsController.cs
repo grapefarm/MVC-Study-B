@@ -200,5 +200,22 @@ namespace WebApplication2.Controllers
         {
             return _context.Products.Any(e => e.ProductId == id);
         }
-    }
+
+		// 寫在原本的 Delete 旁邊，這個是專門接 Fetch 呼叫的 API
+		[HttpPost]
+		public async Task<IActionResult> DeleteApi(int id)
+		{
+			var product = await _context.Products.FindAsync(id);
+			if (product == null)
+			{
+				return Json(new { success = false, message = "找不到該商品！" });
+			}
+
+			_context.Products.Remove(product);
+			await _context.SaveChangesAsync();
+
+			// 回傳 JSON 給前端 Fetch 接收
+			return Json(new { success = true });
+		}
+	}
 }

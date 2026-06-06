@@ -79,8 +79,60 @@
                 <a asp-action="Edit" asp-route-id="@item.ProductId">Edit</a> |
                 <a asp-action="Details" asp-route-id="@item.ProductId">Details</a> |
                 <a asp-action="Delete" asp-route-id="@item.ProductId">Delete</a>
+                <button type="button" class="btn btn-sm btn-danger btn-delete-fetch" data-id="@item.ProductId">
+                    非同步刪除
+                </button>
             </td>
         </tr>
 }
     </tbody>
 </table>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // 1. 綁定所有帶有 .btn-delete-fetch 的按鈕
+            const deleteButtons = document.querySelectorAll('.btn-delete-fetch');
+
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    // 阻止預設行為
+                    e.preventDefault();
+
+                    const id = button.getAttribute('data-id');
+
+                    // 考場防呆：先彈出詢問視窗，避免手滑
+                    if (!confirm("確定要刪除這筆商品嗎？(Fetch 異步執行)")) return;
+
+                    try {
+                        // 2. 使用現代 Fetch API 呼叫後端 API
+                        const response = await fetch(`@Url.Action("DeleteApi", "Products")?id=${id}`, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            // 3. 炫技點：網頁不重新整理，直接用 JS 找到那一行 <tr> 並讓它在畫面上消失
+                            const row = button.closest('tr');
+                            row.style.transition = 'all 0.5s ease';
+                            row.style.opacity = '0';
+
+                            setTimeout(() => {
+                                row.remove();
+                            }, 500); // 0.5秒後徹底從 DOM 移除
+                        } else {
+                            alert(result.message || "刪除失敗！");
+                        }
+                    } catch (error) {
+                        console.error("錯誤:", error);
+                        alert("連線發生錯誤！");
+                    }
+                });
+            });
+        });
+    </script>
+}
