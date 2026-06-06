@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="WebApplication2/WebApplication2.csproj" />
+  <Project Path="WebApplication3/WebApplication3.csproj" Id="bd8eb8d1-4820-4a6a-805e-142488c87f4e" />
 </Solution>

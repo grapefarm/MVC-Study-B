@@ -88,6 +88,9 @@
                 <button type="button" class="btn btn-sm btn-danger btn-delete-fetch" data-id="@item.ProductId">
                     非同步刪除
                 </button>
+                <a href="#" class="btn btn-outline-warning btn-toggle-status" data-id="@item.ProductId">
+                    狀態：<span class="status-text text-success">販售中</span>
+                </a>
             </td>
         </tr>
 }
@@ -102,25 +105,64 @@
 
                 // 💡 2. 精準鎖定：只有點到帶有 .btn-delete-fetch 的按鈕才觸發
                 const button = e.target.closest('.btn-delete-fetch');
-                if (!button || !confirm("確定要刪除這筆商品嗎？")) return;
+                if(button){
+                    if (!confirm("確定要刪除這筆商品嗎？")) return;
 
-                e.preventDefault(); // 擋掉預設行為
-                const id = button.getAttribute('data-id');
+                    e.preventDefault(); // 擋掉預設行為
+                    const id = button.getAttribute('data-id');
 
-                try {
-                    // 💡 3. 最精簡 Fetch：刪除不需要的 Header，直球對決
-                    const response = await fetch(`@Url.Action("DeleteApi", "Products")?id=${id}`, { method: 'POST' });
-                    const result = await response.json();
+                    try {
+                        // 💡 3. 最精簡 Fetch：刪除不需要的 Header，直球對決
+                        const response = await fetch(`@Url.Action("DeleteApi", "Products")?id=${id}`, { method: 'POST' });
+                        const result = await response.json();
 
-                    // 💡 4. 原生秒殺 DOM 節點
-                    if (result.success) {
-                        button.closest('tr').remove();
-                    } else {
-                        alert(result.message || "刪除失敗！");
+                        // 💡 4. 原生秒殺 DOM 節點
+                        if (result.success) {
+                            button.closest('tr').remove();
+                        } else {
+                            alert(result.message || "刪除失敗！");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert("連線發生錯誤！");
                     }
-                } catch (error) {
-                    console.error(error);
-                    alert("連線發生錯誤！");
+                    return;   
+                }
+            
+
+                const statusBtn = e.target.closest('.btn-toggle-status');
+                if (statusBtn) {
+                    e.preventDefault(); // 擋掉超連結的 # 錨點跳動
+
+                    const id = statusBtn.getAttribute('data-id');
+                    const statusSpan = statusBtn.querySelector('.status-text');
+
+                    try {
+                        const apiUrl = 'https://localhost:7194/api/ProductsApi/toggle-discontinued';
+
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ Id: parseInt(id) })
+                        });
+
+                        const result = await response.json();
+
+                        // 前端免重整，動態切換畫面狀態
+                        if (result.success) {
+                            if (result.isDiscontinued) {
+                                statusSpan.innerText = "已停售";
+                                statusSpan.className = "status-text text-danger fw-bold";
+                            } else {
+                                statusSpan.innerText = "販售中";
+                                statusSpan.className = "status-text text-success";
+                            }
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert("🚨 跨網域中央伺服器連線失敗！");
+                    }
+                    return; // 💡 執行完畢收工
                 }
             });
         });
