@@ -29,6 +29,7 @@ namespace WebApplication2.Controllers
 
 			// 💡 排序開關切換邏輯：如果現在是正序(PriceAsc)，下次點擊超連結就要變倒序(PriceDesc)，反之亦然
 			ViewData["PriceSortParam"] = sortBy == "PriceAsc" ? "PriceDesc" : "PriceAsc";
+			ViewData["CurrentSort"] = sortBy;
 
 			// 3. 宣告查詢基底
 			var products = _context.Products
@@ -53,7 +54,7 @@ namespace WebApplication2.Controllers
 			{
 				"PriceAsc" => products.OrderBy(p => p.UnitPrice),
 				"PriceDesc" => products.OrderByDescending(p => p.UnitPrice),
-				_ => products.OrderBy(p => p.ProductId) // ⚠️ 這裡的 Id 記得對齊你 Model 的大小寫喔（例如 ProductId 或 ProductID）
+				_ => products.OrderBy(p => p.ProductName) // 預設以商品名稱排序
 			};
 
 			// 7. 最後一氣呵成轉成 List 吐給前端

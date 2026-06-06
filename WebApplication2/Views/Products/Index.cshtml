@@ -5,13 +5,15 @@
 }
 
 <h1>Index</h1>
-<form method="get" action="@Url.Action("Index", "Products")" class="mb-3">
+
+<form method="get" asp-controller="Products" asp-action="Index" class="mb-3">
     <div class="row g-2 align-items-center">
         <!-- 關鍵字 -->
         <div class="col-auto">
             <input type="text" name="keyword" value="@ViewData["CurrentKeyword"]" class="form-control" placeholder="商品名稱..." />
+            <input type="hidden" name="sortBy" value="@ViewData["CurrentSort"]" />
         </div>
-        <!-- 分類下拉選單（會自動選中上次篩選的項目） -->
+        <!-- 分類下拉選單 -->
         <div class="col-auto">
             <select name="categoryId" class="form-select" asp-items="ViewBag.CategoryId">
                 <option value="">-- 全部商品分類 --</option>
@@ -20,7 +22,7 @@
         <!-- 按鈕組 -->
         <div class="col-auto">
             <button type="submit" class="btn btn-primary">複合搜尋</button>
-            <a href="@Url.Action("Index", "Products")" class="btn btn-secondary">清除</a>
+            <a asp-controller="Products" asp-action="Index" class="btn btn-secondary">清除</a>
         </div>
     </div>
 </form>
@@ -38,8 +40,12 @@
                 @Html.DisplayNameFor(model => model.QuantityPerUnit)
             </th>
             <th>
-                <a href="@Url.Action("Index", new { sortBy = ViewData["PriceSortParam"], keyword = ViewData["CurrentKeyword"], categoryId = Context.Request.Query["categoryId"] })" style="text-decoration: none;">
-                    單價 ↕
+                <a asp-action="Index"
+                   asp-route-sortBy="@ViewData["PriceSortParam"]" 
+                   asp-route-keyword="@ViewData["CurrentKeyword"]"
+                   asp-route-categoryId="@Context.Request.Query["categoryId"]"
+                >
+                    單價
                 </a>
             </th>
             <th>
@@ -91,47 +97,31 @@
 @section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // 1. 綁定所有帶有 .btn-delete-fetch 的按鈕
-            const deleteButtons = document.querySelectorAll('.btn-delete-fetch');
+            // 💡 1. 抓取外層容器（例如 tbody 或 table），只綁定一個監聽器，效能爆棚！
+            document.querySelector('tbody')?.addEventListener('click', async (e) => {
 
-            deleteButtons.forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    // 阻止預設行為
-                    e.preventDefault();
+                // 💡 2. 精準鎖定：只有點到帶有 .btn-delete-fetch 的按鈕才觸發
+                const button = e.target.closest('.btn-delete-fetch');
+                if (!button || !confirm("確定要刪除這筆商品嗎？")) return;
 
-                    const id = button.getAttribute('data-id');
+                e.preventDefault(); // 擋掉預設行為
+                const id = button.getAttribute('data-id');
 
-                    // 考場防呆：先彈出詢問視窗，避免手滑
-                    if (!confirm("確定要刪除這筆商品嗎？(Fetch 異步執行)")) return;
+                try {
+                    // 💡 3. 最精簡 Fetch：刪除不需要的 Header，直球對決
+                    const response = await fetch(`@Url.Action("DeleteApi", "Products")?id=${id}`, { method: 'POST' });
+                    const result = await response.json();
 
-                    try {
-                        // 2. 使用現代 Fetch API 呼叫後端 API
-                        const response = await fetch(`@Url.Action("DeleteApi", "Products")?id=${id}`, {
-                            method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-
-                        const result = await response.json();
-
-                        if (result.success) {
-                            // 3. 炫技點：網頁不重新整理，直接用 JS 找到那一行 <tr> 並讓它在畫面上消失
-                            const row = button.closest('tr');
-                            row.style.transition = 'all 0.5s ease';
-                            row.style.opacity = '0';
-
-                            setTimeout(() => {
-                                row.remove();
-                            }, 500); // 0.5秒後徹底從 DOM 移除
-                        } else {
-                            alert(result.message || "刪除失敗！");
-                        }
-                    } catch (error) {
-                        console.error("錯誤:", error);
-                        alert("連線發生錯誤！");
+                    // 💡 4. 原生秒殺 DOM 節點
+                    if (result.success) {
+                        button.closest('tr').remove();
+                    } else {
+                        alert(result.message || "刪除失敗！");
                     }
-                });
+                } catch (error) {
+                    console.error(error);
+                    alert("連線發生錯誤！");
+                }
             });
         });
     </script>
